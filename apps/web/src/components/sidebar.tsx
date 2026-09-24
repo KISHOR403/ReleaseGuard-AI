@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   Server,
   Layers,
+  Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -24,6 +25,11 @@ const navItems: NavItem[] = [
     name: 'Dashboard',
     href: '/dashboard',
     icon: LayoutDashboard,
+  },
+  {
+    name: 'Change Analysis',
+    href: '/analysis',
+    icon: Sparkles,
   },
   {
     name: 'Projects',

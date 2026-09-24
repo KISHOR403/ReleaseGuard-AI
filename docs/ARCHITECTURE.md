@@ -139,3 +139,65 @@ The intelligence layer (`packages/ai`) operates as a pipeline of cooperative, do
 ```
 
 Detailed definitions, inputs, prompts, and outputs for each agent are documented in [AGENTS.md](file:///d:/Project/ReleaseGuard%20AI/docs/AGENTS.md).
+
+---
+
+## Change Intelligence Architecture
+
+The **Change Intelligence Engine** (`packages/change-intelligence`) processes software changes using a **deterministic-first, AI-reasoned, schema-validated** architecture:
+
+```
+                  Raw Change Input (ChangeAnalysisInput)
+                                   │
+                                   ▼
+                  ┌─────────────────────────────────┐
+                  │       Pre-processing Layer      │
+                  │ - Truncation guard (<150k char) │
+                  │ - File change categorization    │
+                  └────────────────┬────────────────┘
+                                   │
+                                   ▼
+                  ┌─────────────────────────────────┐
+                  │    Deterministic Analyzers      │
+                  │ - File classification (heurs.)  │
+                  │ - Diff stats & symbol changes   │
+                  │ - API routes (Express, Nest, Next)
+                  │ - Dependency updates (npm, etc.)│
+                  │ - Candidate test locator        │
+                  └────────────────┬────────────────┘
+                                   │
+                     Structured Deterministic Context
+                                   │
+                                   ▼
+                  ┌─────────────────────────────────┐
+                  │   AI Provider Layer (packages/ai)│
+                  │ - Google Gemini (gemini-2.5-flash)
+                  │ - Mock Provider (offline/testing)│
+                  │ - Strict JSON schema adherence  │
+                  │ - Self-correcting retry loop    │
+                  └────────────────┬────────────────┘
+                                   │
+                                   ▼
+                  ┌─────────────────────────────────┐
+                  │      Fact Merging & Guard       │
+                  │ - Injects deterministic APIs    │
+                  │ - Injects candidate tests       │
+                  │ - Validates evidence citations  │
+                  │ - Enforces Zod Result Schema    │
+                  └────────────────┬────────────────┘
+                                   │
+                                   ▼
+                  ┌─────────────────────────────────┐
+                  │    Persistence & Observability  │
+                  │ - AgentRun persisted (Postgres) │
+                  │ - Token usage and latency logged│
+                  │ - Returned via REST & Web UI    │
+                  └─────────────────────────────────┘
+```
+
+### Key Principles
+
+1. **Deterministic Analysis First**: AST and regex patterns extract file types, lines changed, endpoints, and dependency modifications prior to LLM invocation, conserving tokens and preventing hallucinations.
+2. **Explainable AI with Evidence Chains**: Every risk indicator emitted by the agent must cite concrete evidence from the input (e.g., file paths, route definitions, symbol names). Generic claims without evidence are strictly rejected.
+3. **Pluggable Model Architecture**: Provider abstraction (`LLMProvider`) isolates model vendors (Gemini, OpenAI, Anthropic, local) behind an interface that supports structured outputs and error correction.
+4. **Resilient Data Merging**: Deterministically extracted endpoints and candidate tests are guaranteed to appear in the final `ChangeAnalysisResult` through automated fact merging.

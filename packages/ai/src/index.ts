@@ -1,6 +1,5 @@
-/**
- * @releaseguard/ai
- * AI orchestration, agent workflows, and LLM interfaces.
- * Implementation scheduled for subsequent milestone.
- */
-export const AI_PACKAGE_NAME = '@releaseguard/ai';
+export * from './providers/llm-provider.interface';
+export * from './providers/gemini.provider';
+export * from './providers/mock.provider';
+export * from './providers/provider.factory';
+export * from './llm-client';

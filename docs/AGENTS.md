@@ -6,21 +6,55 @@ ReleaseGuard AI organizes its quality engineering intelligence into eight specia
 
 ## 1. Change Intelligence Agent
 
-### Role
-Analyzes incoming pull request diffs, commit histories, and code structures to extract semantic code intent.
+### Purpose
+The Change Intelligence Agent is the primary perceptual layer of ReleaseGuard AI. Its mission is to analyze a software change and produce a structured, deterministic, and evidence-grounded understanding of what changed, which components and APIs are affected, what risk indicators exist, and what candidate regression tests are implicated.
 
-### Responsibilities
-* Parses unified diffs and AST changes across modified files.
-* Distinguishes between cosmetic changes (formatting, comments), non-breaking changes, and semantic changes (logic modifications, database migrations, configuration adjustments).
-* Identifies newly introduced functions, modified parameter lists, and deleted symbols.
+It operates independently of any specific Git hosting provider (GitHub, GitLab, Bitbucket, local git CLI) by utilizing an abstract, provider-agnostic input contract.
 
-### Inputs
-* Git commit range / PR unified diff.
-* Repository AST tree.
-* PR title and description.
+### Inputs (`ChangeAnalysisInput`)
+* `repository`: Repository identifier or project name.
+* `repositoryUrl`: Optional URL to the remote repository.
+* `baseBranch`: Target base branch (default: `main`).
+* `targetBranch`: Feature branch under analysis.
+* `commitSha`: Optional commit hash.
+* `pullRequestNumber`: Optional pull request number.
+* `changedFiles`: Array of changed files:
+  * `path`: Relative file path.
+  * `status`: `added` | `modified` | `deleted` | `renamed`.
+  * `additions`: Number of lines added.
+  * `deletions`: Number of lines deleted.
+  * `patch`: Raw unified diff chunk.
+* `repositoryMetadata`: Optional configuration and package manifest metadata.
+* `existingTests`: Optional inventory of known test suite files.
 
-### Outputs
-* Structured change summary (files touched, symbols added/modified/removed, semantic categories).
+### Outputs (`ChangeAnalysisResult`)
+* `summary`: Concise, factual explanation of the change.
+* `changeType`: Classified category (`FEATURE`, `BUG_FIX`, `REFACTOR`, `CONFIGURATION`, `DEPENDENCY`, `DATABASE`, `API`, `SECURITY`, `TEST`, `DOCUMENTATION`, `UNKNOWN`).
+* `changedAreas`: Array of impacted domains with name, type (e.g. `service`, `controller`), and `impact` level (`LOW`, `MEDIUM`, `HIGH`, `CRITICAL`, `UNKNOWN`).
+* `affectedComponents`: List of identified code components, classes, or modules.
+* `affectedApis`: Array of detected API endpoints (`method`, `path`, `sourceFile`, `confidence`).
+* `riskIndicators`: Array of concrete risk factors (`type`, `description`, `evidence`, `confidence`).
+* `testImplications`: Array of candidate regression tests for modified source files.
+* `confidence`: Quantitative assessment confidence score (0.0 to 1.0).
+* `unknowns`: List of ambiguous, truncated, or unresolvable items.
+
+### Tools & Deterministic Analyzers
+The agent enforces a **Deterministic Analysis First** workflow:
+1. **`FileAnalyzer`**: Heuristically classifies files by language, extension, and functional category (Frontend React/pages/hooks/styles, Backend controllers/routes/services/repositories/models, Testing unit/integration/e2e/fixtures, Infrastructure Docker/K8s/Terraform/CI-CD/configs, Database migrations/schemas/seeds, and Documentation).
+2. **`DiffAnalyzer`**: Extracts additions, deletions, changed lines, added/removed functions, modified imports/exports, environment variables, and dependency references.
+3. **`ApiAnalyzer`**: Identifies API route decorators and patterns across Express (`app.get`, `router.post`), NestJS (`@Controller`, `@Get`, `@Post`, `@Put`, `@Patch`, `@Delete`), and Next.js App Router handlers.
+4. **`DependencyAnalyzer`**: Inspects package manifests (`package.json`, lockfiles, `requirements.txt`) and flags major upgrades, dependency removals, or sensitive package additions.
+5. **`CandidateTestDetector`**: Employs naming and directory conventions to suggest candidate unit/integration tests for each touched non-test file.
+6. **`ChangePreprocessor`**: Aggregates deterministic extractions and enforces context truncation safety (flagging truncations in `unknowns`).
+
+### Evidence Requirements & Explainability
+Every risk indicator **must** include an `evidence` array referencing concrete source files, line diffs, or API endpoints. The system strictly forbids ungrounded assertions (e.g., "AI thinks this is risky"). All explanations must state technical facts (e.g., "Payment API route signature changed in src/payment/controller.ts: POST /api/v1/payments/charge").
+
+### Failure Handling & Resilience
+1. **Schema Validation**: All LLM outputs are validated against a strict Zod schema (`ChangeAnalysisResultSchema`).
+2. **Auto-Correction Retry**: If output is malformed JSON or schema-invalid, the agent prompts the model with explicit schema error feedback up to `maxRetries` (default: 2).
+3. **AgentRun Lifecycle**: Every execution is tracked in PostgreSQL via `AgentRun` (`RUNNING` → `COMPLETED` or `FAILED`), preserving sanitized error traces and token metrics without leaking secrets.
+4. **Provider-Independent Fallback**: If an LLM provider is unconfigured, a descriptive configuration error is thrown while the deterministic analysis pipeline remains independently testable.
 
 ---
 

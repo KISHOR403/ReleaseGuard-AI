@@ -1,0 +1,42 @@
+{
+  "repository": "demo-ecommerce",
+  "repositoryUrl": "https://github.com/example-org/demo-ecommerce",
+  "baseBranch": "main",
+  "targetBranch": "feature/payment-v2-integration",
+  "commitSha": "f4b1c89012a3",
+  "pullRequestNumber": 42,
+  "changedFiles": [
+    {
+      "path": "src/payment/controller.ts",
+      "status": "modified",
+      "additions": 28,
+      "deletions": 4,
+      "patch": "@@ -10,4 +10,28 @@\n import { Body, Controller, Get, Param, Post } from '@nestjs/common';\n import { PaymentService } from './service';\n \n-@Controller('payment')\n+@Controller('/api/v1/payments')\n export class PaymentController {\n   constructor(private readonly paymentService: PaymentService) {}\n+\n+  @Post('charge')\n+  async createCharge(@Body() payload: { amount: number; currency: string; token: string }) {\n+    return this.paymentService.processCharge(payload.amount, payload.currency, payload.token);\n+  }\n+\n+  @Get('status/:transactionId')\n+  async getStatus(@Param('transactionId') transactionId: string) {\n+    return this.paymentService.getTransactionStatus(transactionId);\n+  }\n }"
+    },
+    {
+      "path": "src/payment/service.ts",
+      "status": "modified",
+      "additions": 45,
+      "deletions": 12,
+      "patch": "@@ -1,15 +1,48 @@\n import { Injectable, Logger } from '@nestjs/common';\n+import Stripe from 'stripe';\n \n @Injectable()\n export class PaymentService {\n   private readonly logger = new Logger(PaymentService.name);\n+  private readonly stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', { apiVersion: '2023-10-16' });\n \n-  async processCharge(amount: number) {\n-    return { success: true };\n+  async processCharge(amount: number, currency: string, sourceToken: string) {\n+    this.logger.log(`Initiating charge for amount ${amount} ${currency}`);\n+    if (amount <= 0) {\n+      throw new Error('Invalid payment amount');\n+    }\n+    const idempotencyKey = `req_${Date.now()}_${Math.random().toString(36).substring(7)}`;\n+    const charge = await this.stripe.charges.create({\n+      amount,\n+      currency,\n+      source: sourceToken,\n+    }, { idempotencyKey });\n+    return { transactionId: charge.id, status: charge.status };\n+  }\n+\n+  async getTransactionStatus(transactionId: string) {\n+    return this.stripe.charges.retrieve(transactionId);\n   }\n }"
+    },
+    {
+      "path": "src/payment/service.test.ts",
+      "status": "modified",
+      "additions": 35,
+      "deletions": 2,
+      "patch": "@@ -5,2 +5,35 @@\n   it('should process payment charges successfully', async () => {\n-    expect(true).toBe(true);\n+    const service = new PaymentService();\n+    const result = await service.processCharge(1000, 'usd', 'tok_visa');\n+    expect(result.status).toBe('succeeded');\n+  });\n+\n+  it('should reject non-positive charge amounts', async () => {\n+    const service = new PaymentService();\n+    await expect(service.processCharge(-50, 'usd', 'tok_visa')).rejects.toThrow('Invalid payment amount');\n   });"
+    },
+    {
+      "path": "package.json",
+      "status": "modified",
+      "additions": 1,
+      "deletions": 0,
+      "patch": "@@ -24,4 +24,5 @@\n   \"dependencies\": {\n     \"@nestjs/common\": \"^10.0.0\",\n+    \"stripe\": \"^14.15.0\",\n     \"reflect-metadata\": \"^0.1.13\"\n   }"
+    }
+  ],
+  "existingTests": [
+    "src/payment/service.test.ts",
+    "test/e2e/payment.e2e-spec.ts"
+  ]
+}
