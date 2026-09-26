@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "declaration": true,
+    "paths": {
+      "@releaseguard/ai": ["../ai/dist/index.d.ts"],
+      "@releaseguard/shared": ["../shared/dist/index.d.ts"],
+      "@releaseguard/change-intelligence": ["../change-intelligence/dist/index.d.ts"]
+    }
+  },
+  "include": ["src/**/*"]
+}

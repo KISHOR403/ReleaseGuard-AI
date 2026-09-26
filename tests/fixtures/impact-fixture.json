@@ -1,0 +1,168 @@
+{
+  "repository": {
+    "name": "demo-ecommerce",
+    "language": "typescript",
+    "framework": "nestjs"
+  },
+  "changeAnalysis": {
+    "summary": "Payment processing controller and service modified with new charge endpoint and Stripe payment handling.",
+    "changeType": "API",
+    "changedAreas": [
+      {
+        "name": "payment",
+        "type": "service",
+        "impact": "HIGH"
+      }
+    ],
+    "affectedComponents": [
+      "PaymentController",
+      "PaymentService"
+    ],
+    "affectedApis": [
+      {
+        "method": "POST",
+        "path": "/api/v1/payments/charge",
+        "sourceFile": "src/payment/payment.controller.ts",
+        "confidence": 0.95
+      }
+    ],
+    "riskIndicators": [
+      {
+        "type": "API_CHANGE",
+        "description": "Payment endpoint POST /api/v1/payments/charge added or updated in payment controller.",
+        "evidence": [
+          "src/payment/payment.controller.ts",
+          "POST /api/v1/payments/charge"
+        ],
+        "confidence": 0.95
+      }
+    ],
+    "testImplications": [
+      {
+        "changedFile": "src/payment/payment.service.ts",
+        "candidateTests": [
+          "tests/payment.service.test.ts"
+        ]
+      }
+    ],
+    "confidence": 0.94,
+    "unknowns": []
+  },
+  "repositorySnapshot": {
+    "files": [
+      {
+        "path": "src/payment/payment.repository.ts",
+        "content": "export class PaymentRepository {\n  async findById(id: string) {\n    const query = 'SELECT id, amount, currency, status FROM payments WHERE id = $1';\n    return { id, query };\n  }\n  async savePayment(payment: { amount: number; currency: string; status: string }) {\n    const query = 'INSERT INTO payments (amount, currency, status) VALUES ($1, $2, $3)';\n    return { ...payment, query };\n  }\n}"
+      },
+      {
+        "path": "src/payment/payment.service.ts",
+        "content": "import { PaymentRepository } from './payment.repository';\n\nexport class PaymentService {\n  private repository: PaymentRepository;\n  constructor() {\n    this.repository = new PaymentRepository();\n  }\n  async processCharge(amount: number, currency: string, sourceToken: string) {\n    const payment = { amount, currency, status: 'succeeded' };\n    await this.repository.savePayment(payment);\n    return { transactionId: 'tx_123', status: payment.status };\n  }\n}"
+      },
+      {
+        "path": "src/payment/payment.controller.ts",
+        "content": "import { PaymentService } from './payment.service';\n\nexport class PaymentController {\n  private paymentService: PaymentService;\n  constructor() {\n    this.paymentService = new PaymentService();\n  }\n  async createCharge(body: { amount: number; currency: string; token: string }) {\n    return this.paymentService.processCharge(body.amount, body.currency, body.token);\n  }\n}"
+      },
+      {
+        "path": "src/order/order.service.ts",
+        "content": "import { PaymentService } from '../payment/payment.service';\n\nexport class OrderService {\n  private paymentService: PaymentService;\n  constructor() {\n    this.paymentService = new PaymentService();\n  }\n  async createOrder(orderId: string, amount: number, currency: string) {\n    return this.paymentService.processCharge(amount, currency, 'token_default');\n  }\n}"
+      },
+      {
+        "path": "src/checkout/checkout.service.ts",
+        "content": "import { OrderService } from '../order/order.service';\n\nexport class CheckoutService {\n  private orderService: OrderService;\n  constructor() {\n    this.orderService = new OrderService();\n  }\n  async executeCheckout(cartId: string, total: number, currency: string) {\n    return this.orderService.createOrder(`ord_${cartId}`, total, currency);\n  }\n}"
+      },
+      {
+        "path": "src/checkout/checkout.controller.ts",
+        "content": "import { CheckoutService } from './checkout.service';\n\nexport class CheckoutController {\n  private checkoutService: CheckoutService;\n  constructor() {\n    this.checkoutService = new CheckoutService();\n  }\n  async handleCheckout(cartId: string, total: number, currency: string) {\n    return this.checkoutService.executeCheckout(cartId, total, currency);\n  }\n}"
+      },
+      {
+        "path": "src/notification/notification.worker.ts",
+        "content": "import { CheckoutService } from '../checkout/checkout.service';\n\nexport class NotificationWorker {\n  private checkoutService: CheckoutService;\n  constructor() {\n    this.checkoutService = new CheckoutService();\n  }\n  async notify(cartId: string) {\n    return this.checkoutService.executeCheckout(cartId, 100, 'USD');\n  }\n}"
+      },
+      {
+        "path": "tests/payment.service.test.ts",
+        "content": "import { PaymentService } from '../src/payment/payment.service';\n\ndescribe('PaymentService Unit Tests', () => {\n  it('should charge', async () => {\n    const s = new PaymentService();\n    expect(s).toBeDefined();\n  });\n});"
+      },
+      {
+        "path": "tests/checkout.e2e.spec.ts",
+        "content": "import { CheckoutController } from '../src/checkout/checkout.controller';\n\ndescribe('Checkout E2E Spec', () => {\n  it('should test /api/v1/checkout', async () => {\n    const c = new CheckoutController();\n    expect(c).toBeDefined();\n  });\n});"
+      },
+      {
+        "path": "db/migrations/001_payments.sql",
+        "content": "ALTER TABLE payments ADD COLUMN currency VARCHAR(3);"
+      }
+    ]
+  },
+  "openApiSpec": {
+    "openapi": "3.0.0",
+    "paths": {
+      "/api/v1/payments/charge": {
+        "post": {
+          "summary": "Create payment charge",
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["amount", "token", "currency"],
+                  "properties": {
+                    "amount": { "type": "number" },
+                    "token": { "type": "string" },
+                    "currency": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/api/v1/checkout": {
+        "post": {
+          "summary": "Submit customer checkout",
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["cartId", "total", "currency"]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "previousOpenApiSpec": {
+    "openapi": "3.0.0",
+    "paths": {
+      "/api/v1/payments/charge": {
+        "post": {
+          "summary": "Create payment charge",
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["amount", "token"],
+                  "properties": {
+                    "amount": { "type": "number" },
+                    "token": { "type": "string" },
+                    "currency": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/api/v1/legacy/pay": {
+        "delete": {
+          "summary": "Legacy payment cleanup"
+        }
+      }
+    }
+  }
+}

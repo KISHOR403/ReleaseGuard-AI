@@ -6,6 +6,7 @@ module.exports = {
     '^@releaseguard/shared$': '<rootDir>/packages/shared/src/index.ts',
     '^@releaseguard/ai$': '<rootDir>/packages/ai/src/index.ts',
     '^@releaseguard/change-intelligence$': '<rootDir>/packages/change-intelligence/src/index.ts',
+    '^@releaseguard/impact-analysis$': '<rootDir>/packages/impact-analysis/src/index.ts',
   },
   testMatch: [
     '<rootDir>/packages/**/__tests__/**/*.spec.ts',

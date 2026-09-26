@@ -11,7 +11,7 @@
   "scripts": {
     "dev:api": "npm --workspace=apps/api run start:dev",
     "dev:web": "npm --workspace=apps/web run dev",
-    "build:packages": "npm --workspace=packages/shared run build && npm --workspace=packages/ai run build && npm --workspace=packages/change-intelligence run build",
+    "build:packages": "npm --workspace=packages/shared run build && npm --workspace=packages/ai run build && npm --workspace=packages/change-intelligence run build && npm --workspace=packages/impact-analysis run build",
     "build:api": "npm --workspace=apps/api run build",
     "build:web": "npm --workspace=apps/web run build",
     "build": "npm run build:packages && npm run build:api && npm run build:web",

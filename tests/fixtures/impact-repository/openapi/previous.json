@@ -1,0 +1,54 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "E-Commerce API",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/v1/payments/charge": {
+      "post": {
+        "summary": "Create payment charge",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["amount", "token"],
+                "properties": {
+                  "amount": { "type": "number" },
+                  "token": { "type": "string" },
+                  "currency": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "transactionId": { "type": "string" },
+                    "status": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/legacy/pay": {
+      "delete": {
+        "summary": "Legacy payment cleanup",
+        "responses": {
+          "200": { "description": "OK" }
+        }
+      }
+    }
+  }
+}

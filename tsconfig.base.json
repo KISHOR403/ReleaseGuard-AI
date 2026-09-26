@@ -33,7 +33,8 @@
       "@releaseguard/github": ["packages/github/src/index.ts"],
       "@releaseguard/risk-engine": ["packages/risk-engine/src/index.ts"],
       "@releaseguard/test-engine": ["packages/test-engine/src/index.ts"],
-      "@releaseguard/change-intelligence": ["packages/change-intelligence/src/index.ts"]
+      "@releaseguard/change-intelligence": ["packages/change-intelligence/src/index.ts"],
+      "@releaseguard/impact-analysis": ["packages/impact-analysis/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "dist", ".next"]

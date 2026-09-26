@@ -25,6 +25,7 @@ export interface AgentRunRecord {
 @Injectable()
 export class AgentRunRepository {
   private readonly logger = new Logger(AgentRunRepository.name);
+  private readonly inMemoryRuns = new Map<string, AgentRunRecord>();
 
   constructor(private readonly databaseService: DatabaseService) {}
 
@@ -74,6 +75,19 @@ export class AgentRunRepository {
     if (!pool || !this.databaseService.isDatabaseConnected()) {
       // In-memory fallback UUID if DB is offline
       const fallbackId = `run-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+      this.inMemoryRuns.set(fallbackId, {
+        id: fallbackId,
+        type: 'CHANGE_ANALYSIS',
+        status: 'RUNNING',
+        repository: input.repository,
+        baseBranch: input.baseBranch || 'main',
+        targetBranch: input.targetBranch || 'current',
+        commitSha: input.commitSha,
+        pullRequestNumber: input.pullRequestNumber,
+        inputData: input,
+        startedAt: new Date(),
+        createdAt: new Date(),
+      });
       return fallbackId;
     }
 
@@ -99,15 +113,65 @@ export class AgentRunRepository {
     return res.rows[0].id;
   }
 
+  async createImpactRun(input: unknown, repoName?: string): Promise<string> {
+    const pool = this.databaseService.getPool();
+    if (!pool || !this.databaseService.isDatabaseConnected()) {
+      const fallbackId = `impact-run-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+      this.inMemoryRuns.set(fallbackId, {
+        id: fallbackId,
+        type: 'IMPACT_ANALYSIS',
+        status: 'RUNNING',
+        repository: repoName || 'snapshot-repo',
+        baseBranch: 'main',
+        targetBranch: 'current',
+        inputData: input as ChangeAnalysisInput,
+        startedAt: new Date(),
+        createdAt: new Date(),
+      });
+      return fallbackId;
+    }
+
+    const query = `
+      INSERT INTO agent_runs (
+        type, status, repository, base_branch, target_branch, commit_sha, pull_request_number, input_data
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING id;
+    `;
+
+    const values = [
+      'IMPACT_ANALYSIS',
+      'RUNNING',
+      repoName || 'snapshot-repo',
+      'main',
+      'current',
+      null,
+      null,
+      JSON.stringify(input),
+    ];
+
+    const res = await pool.query(query, values);
+    return res.rows[0].id;
+  }
+
   async completeRun(
     id: string,
     params: {
-      result: ChangeAnalysisResult;
+      result: unknown;
       provider: string;
       model: string;
       tokensUsed?: unknown;
     }
   ): Promise<void> {
+    const inMem = this.inMemoryRuns.get(id);
+    if (inMem) {
+      inMem.status = 'COMPLETED';
+      inMem.result = params.result as ChangeAnalysisResult;
+      inMem.provider = params.provider;
+      inMem.model = params.model;
+      inMem.tokenUsage = params.tokensUsed;
+      inMem.completedAt = new Date();
+    }
+
     const pool = this.databaseService.getPool();
     if (!pool || !this.databaseService.isDatabaseConnected()) return;
 
@@ -132,6 +196,14 @@ export class AgentRunRepository {
   }
 
   async failRun(id: string, errorMessage: string, provider?: string): Promise<void> {
+    const inMem = this.inMemoryRuns.get(id);
+    if (inMem) {
+      inMem.status = 'FAILED';
+      inMem.errorMessage = errorMessage;
+      inMem.provider = provider;
+      inMem.completedAt = new Date();
+    }
+
     const pool = this.databaseService.getPool();
     if (!pool || !this.databaseService.isDatabaseConnected()) return;
 
@@ -149,11 +221,15 @@ export class AgentRunRepository {
 
   async getRunById(id: string): Promise<AgentRunRecord | null> {
     const pool = this.databaseService.getPool();
-    if (!pool || !this.databaseService.isDatabaseConnected()) return null;
+    if (!pool || !this.databaseService.isDatabaseConnected()) {
+      return this.inMemoryRuns.get(id) || null;
+    }
 
     const query = `SELECT * FROM agent_runs WHERE id = $1;`;
     const res = await pool.query(query, [id]);
-    if (res.rows.length === 0) return null;
+    if (res.rows.length === 0) {
+      return this.inMemoryRuns.get(id) || null;
+    }
 
     const row = res.rows[0];
     return {
