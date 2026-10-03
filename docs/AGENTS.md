@@ -58,22 +58,57 @@ Every risk indicator **must** include an `evidence` array referencing concrete s
 
 ---
 
-## 2. Impact Analysis Agent
+## 2. Impact Analysis Agent & Quality Impact Graph
 
-### Role
-Calculates the transitive blast radius of the code changes identified by the Change Intelligence Agent.
+### Purpose
+The Impact Analysis Agent calculates the transitive blast radius and builds a formal, directed Quality Impact Graph for code changes identified by the Change Intelligence Agent. It determines structural system impact without requiring GitHub integration by ingesting repository snapshots directly.
 
-### Responsibilities
-* Traverses the code dependency graph (import statements, API route mappings, RPC definitions, schema references).
-* Maps impacted downstream consumers, services, and shared libraries.
-* Detects breaking API contract changes or database schema incompatibilities.
+> **Crucial Distinction**: This produces a **structural blast-radius assessment**, NOT the final release risk score (which is computed subsequently by the Risk Assessment Agent).
 
-### Inputs
-* Semantic change summary from Agent 1.
-* Project dependency graph and architecture map.
+### Architectural Responsibilities
+* **Deterministic Repository Indexing**: Parses files into AST representations, indexing imports, exports, functions, classes, methods, routes, controllers, services, repositories, database queries, and tests.
+* **Forward & Reverse Dependency Traversal**: Builds dual adjacency matrices (`forward` and `reverse`) so that if component $B$ changes, all components $A$ where $A \to B$ are discovered as affected.
+* **Cycle-Safe BFS Traversal**: Traverses transitive consumers with visited-set cycle detection up to configurable `maxTraversalDepth` (default: 5).
+* **API Contract Compatibility (OpenAPI 3.x)**: Compares current vs. previous OpenAPI specifications to flag endpoint removals, HTTP method modifications, and breaking request/response schema drift.
+* **Database Impact Analysis**: Analyzes SQL migrations, Prisma schemas, and scans source code for SQL query consumers (`SELECT`, `INSERT`, `UPDATE`, `DELETE`) mapping to impacted tables and columns.
+* **Targeted Test Impact**: Maps candidate regression tests by distinguishing verified import dependencies (`VERIFIED_IMPORT`) from naming heuristics (`HEURISTIC_NAMING`).
+* **Deterministic Blast-Radius Scoring**: Computes a reproducible structural blast radius score (0 to 100) using configurable weights across direct nodes, transitive nodes, max depth, affected APIs, breaking APIs, database entities, and candidate tests.
 
-### Outputs
-* Blast radius report: list of impacted files, API routes, user-facing flows, and downstream consumers.
+### Inputs (`ImpactAnalysisInput`)
+* `changeAnalysis`: Verified `ChangeAnalysisResult` from Agent 1.
+* `repositorySnapshot`: `{ files: RepositoryFile[] }` with file paths and source content.
+* `openApiSpec`: Optional current OpenAPI 3.x specification.
+* `previousOpenApiSpec`: Optional previous OpenAPI 3.x specification.
+* `databaseSchema`: Optional current database schema/migration DDL.
+* `previousDatabaseSchema`: Optional previous database schema.
+* `options`: Configurable traversal parameters (`maxTraversalDepth`, `weights`).
+
+### Outputs (`ImpactAnalysisResult`)
+* `summary`: Structural impact summary.
+* `blastRadiusScore`: Deterministic score (0-100).
+* `breakdown`: Detailed factor counts (`directNodes`, `transitiveNodes`, `maxDepth`, `affectedApis`, `breakingApis`, `affectedDatabaseEntities`, `affectedTests`, `criticalComponents`).
+* `directImpact`: Nodes directly changed at `impactDepth: 0`.
+* `transitiveImpact`: Downstream consumer nodes with computed depth levels.
+* `affectedComponents`: Logical components in the blast radius.
+* `affectedApis`: OpenAPI contract changes classified as `BREAKING`, `POTENTIALLY_BREAKING`, or `NON_BREAKING`.
+* `affectedDatabase`: Affected tables, columns, migrations, and source code query consumers.
+* `affectedTests`: Prioritized candidate regression tests with relationship evidence.
+* `graph`: Complete directed graph with typed nodes and typed edges.
+* `unknowns`: Explicit list of unresolved dynamic imports or ambiguous constructs.
+* `evidence`: Forensic evidence citations with file paths, line ranges, and snippets.
+* `confidence`: Overall structural analysis confidence.
+
+### Quality Impact Graph Model
+* **Node Types**: `FILE`, `SYMBOL`, `COMPONENT`, `API`, `DATABASE_TABLE`, `DATABASE_COLUMN`, `TEST`, `WORKFLOW`.
+* **Edge Types**: `IMPORTS`, `CALLS`, `DEPENDS_ON`, `IMPLEMENTS_API`, `CONSUMES_API`, `READS_TABLE`, `WRITES_TABLE`, `READS_COLUMN`, `WRITES_COLUMN`, `TESTS`, `REFERENCES`.
+* **Evidence Rule**: Every edge contains `verified: boolean`, `confidence: number`, and forensic AST evidence. Inferred relationships are explicitly marked with `verified: false`.
+
+### Known Limitations
+* Dynamic runtime imports (`import(...)` with expressions) cannot always be statically resolved.
+* Reflection, metaprogramming, and runtime dependency injection containers are partially inferred.
+* Highly dynamic string-concatenated SQL queries may require runtime execution to resolve.
+* Graph accuracy depends on the fidelity of the provided repository snapshot.
+* Cross-language polyglot dependency boundaries (e.g. gRPC protobuf across Go/Python) are currently mapped via API contracts.
 
 ---
 

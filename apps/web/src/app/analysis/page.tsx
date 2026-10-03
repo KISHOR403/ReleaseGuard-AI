@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import {
   Sparkles,
   Play,
@@ -14,6 +15,7 @@ import {
   ShieldAlert,
   ArrowRight,
   Code2,
+  Network,
 } from 'lucide-react';
 import type {
   ChangeAnalysisResult,
@@ -165,6 +167,25 @@ export default function AnalysisPage() {
       setAnalysisId(data.analysisId);
       if (data.status === 'COMPLETED' && data.result) {
         setResult(data.result);
+        if (typeof window !== 'undefined') {
+          try {
+            const stored = localStorage.getItem('rg_recent_analyses');
+            const current = stored ? JSON.parse(stored) : [];
+            const newEntry = {
+              id: data.analysisId || `analysis-${Date.now()}`,
+              changeSummary: data.result.summary,
+              repository,
+              filesCount: changedFiles.length,
+              impact: data.result.changedAreas?.[0]?.impact || 'HIGH',
+              createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              status: 'COMPLETED',
+              hasBreakingApi: data.result.affectedApis?.length > 0,
+            };
+            localStorage.setItem('rg_recent_analyses', JSON.stringify([newEntry, ...current].slice(0, 10)));
+          } catch {
+            // ignore
+          }
+        }
       } else {
         throw new Error(data.error || 'Analysis execution failed');
       }
@@ -372,11 +393,22 @@ export default function AnalysisPage() {
                 </span>
               </div>
 
-              {analysisId && (
-                <div className="text-[11px] font-mono text-zinc-400">
-                  Analysis ID: <span className="text-zinc-300">{analysisId}</span>
-                </div>
-              )}
+              <div className="flex items-center gap-3">
+                {analysisId && (
+                  <div className="text-[11px] font-mono text-zinc-400">
+                    Analysis ID: <span className="text-zinc-300">{analysisId}</span>
+                  </div>
+                )}
+                <Link
+                  id="view-impact-btn"
+                  href="/impact"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold shadow transition-colors"
+                >
+                  <Network className="w-3.5 h-3.5" />
+                  <span>View Impact</span>
+                  <ArrowRight className="w-3 h-3" />
+                </Link>
+              </div>
             </div>
 
             {/* Change Summary */}

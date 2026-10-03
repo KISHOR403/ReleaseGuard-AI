@@ -193,3 +193,80 @@ Retrieves an existing agent run by its unique identifier, including status, time
 #### Error Response
 
 * **Status Code**: `404 Not Found` if the analysis ID does not exist.
+
+---
+
+## Impact Analysis Endpoints
+
+### 4. Trigger Impact Analysis
+
+Submits a repository snapshot along with a prior `ChangeAnalysisResult` (and optional OpenAPI / Database schemas) to construct the Quality Impact Graph and determine transitive blast radius.
+
+* **Endpoint**: `/analysis/impact`
+* **HTTP Method**: `POST`
+* **Authentication**: None (Developer / Internal for Prompt 4)
+* **Headers**: `Content-Type: application/json`
+
+#### Request Body (`ImpactAnalysisInput`)
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `changeAnalysis` | object | Yes | Verified `ChangeAnalysisResult` from Change Intelligence Agent. |
+| `repository` | object | No | Optional metadata (`name`, `language`, `framework`). |
+| `repositorySnapshot` | object | Yes | Container holding `files: [{ path, content, language }]`. |
+| `openApiSpec` | object | No | Current OpenAPI 3.x specification. |
+| `previousOpenApiSpec` | object | No | Previous OpenAPI 3.x specification for contract drift diffing. |
+| `databaseSchema` | object | No | Current database DDL/schema. |
+| `previousDatabaseSchema` | object | No | Previous database DDL/schema. |
+| `options` | object | No | Traversal options (`maxTraversalDepth`: default 5). |
+
+#### Success Response
+
+* **Status Code**: `201 Created`
+* **Content-Type**: `application/json`
+
+```json
+{
+  "analysisId": "impact-run-1727932800-abc123",
+  "status": "COMPLETED",
+  "result": {
+    "summary": "Impact Analysis identified 2 direct changed components, traversing 4 downstream consumers...",
+    "blastRadiusScore": 68,
+    "breakdown": {
+      "directNodes": 2,
+      "transitiveNodes": 4,
+      "maxDepth": 4,
+      "affectedApis": 2,
+      "breakingApis": 1,
+      "affectedDatabaseEntities": 2,
+      "affectedTests": 2,
+      "criticalComponents": 2
+    },
+    "directImpact": { "nodes": [...], "count": 2 },
+    "transitiveImpact": { "nodes": [...], "count": 4, "maxDepth": 4 },
+    "affectedComponents": [...],
+    "affectedApis": [...],
+    "affectedDatabase": [...],
+    "affectedTests": [...],
+    "graph": {
+      "nodes": [...],
+      "edges": [...]
+    },
+    "unknowns": [],
+    "evidence": [...],
+    "confidence": 0.94
+  }
+}
+```
+
+---
+
+### 5. Get Impact Analysis by ID
+
+Retrieves an existing impact analysis run and its complete Quality Impact Graph by ID.
+
+* **Endpoint**: `/analysis/impact/:id`
+* **HTTP Method**: `GET`
+* **URL Parameters**:
+  * `id`: ID of the Impact AgentRun.
+

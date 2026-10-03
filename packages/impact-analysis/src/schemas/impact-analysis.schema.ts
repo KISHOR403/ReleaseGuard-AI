@@ -215,4 +215,4 @@ export const ImpactAnalysisResultSchema = z.object({
 });
 export type ImpactAnalysisResult = z.infer<typeof ImpactAnalysisResultSchema>;
 
-export { ChangeAnalysisResult };
+export type { ChangeAnalysisResult };

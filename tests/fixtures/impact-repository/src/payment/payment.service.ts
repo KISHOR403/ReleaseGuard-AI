@@ -11,7 +11,7 @@ export class PaymentService {
     if (amount <= 0) {
       throw new Error('Invalid payment amount');
     }
-    const payment = { amount, currency, status: 'succeeded' };
+    const payment = { amount, currency, sourceToken, status: 'succeeded' };
     await this.repository.savePayment(payment);
     return { transactionId: `tx_${Date.now()}`, status: payment.status };
   }

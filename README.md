@@ -217,9 +217,10 @@ npm run typecheck
 
 ## Development Roadmap
 
-* [x] **Milestone 1 (Current)**: Core monorepo foundation, Docker compose (PostgreSQL & Redis), NestJS API gateway, Next.js dashboard shell, shared types, and comprehensive architecture documentation.
-* [ ] **Milestone 2**: GitHub App integration, webhook ingestion, repository connection flows, and `repository-worker` setup.
-* [ ] **Milestone 3**: Change Intelligence & Impact Analysis agents, AST dependency tree generation, and Risk Engine heuristics.
-* [ ] **Milestone 4**: Test Engine, intelligent regression selection algorithms, Playwright runner execution via `test-worker`.
-* [ ] **Milestone 5**: Failure Investigation Agent, forensic evidence capture (HAR/video/DOM), and Jira bug creation.
-* [ ] **Milestone 6**: Self-Healing Agent and human-in-the-loop release approval gates.
+* [x] **Milestone 1**: Core monorepo foundation, Docker compose (PostgreSQL & Redis), NestJS API gateway, Next.js dashboard shell, shared types, and comprehensive architecture documentation.
+* [x] **Milestone 2 (Prompt 3)**: Change Intelligence Agent, deterministic AST boundary extraction, API route parsing, risk indicators, and developer workbench (`/analysis`).
+* [x] **Milestone 3 (Prompt 4)**: Impact Analysis Agent & Quality Impact Graph, deterministic reverse dependency traversal, cycle-safe blast-radius calculation, OpenAPI contract drift diffing, database query consumer tracking, and interactive workbench (`/impact`).
+* [ ] **Milestone 4**: Risk Assessment Engine (quantitative multi-factor scoring).
+* [ ] **Milestone 5**: Intelligent Test Selection & test execution orchestration.
+* [ ] **Milestone 6**: Failure Investigation Agent, forensic evidence capture (HAR/video/DOM), and defect creation.
+* [ ] **Milestone 7**: Self-Healing Agent and human-in-the-loop release governance.

@@ -505,7 +505,7 @@ export class RepositoryIndexer {
       }
 
       if (currentModel && line && !line.startsWith('//') && !line.startsWith('@@')) {
-        const fieldMatch = line.match(/^([a-zA-Z0-9_]+)\s+([a-zA-Z0-9_?\[\]]+)/);
+        const fieldMatch = line.match(/^([a-zA-Z0-9_]+)\s+([a-zA-Z0-9_?[\]]+)/);
         if (fieldMatch) {
           const fieldName = fieldMatch[1];
           const fieldType = fieldMatch[2];
